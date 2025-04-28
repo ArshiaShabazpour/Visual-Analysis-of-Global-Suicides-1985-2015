@@ -1,0 +1,346 @@
+---
+title: "Visual Analysis of Global Suicides, 1985–2015"
+author: "Arshiya Shahbazpourtazehkand"
+output: html_document
+
+---
+# Introduction [Data Set](https://www.kaggle.com/datasets/russellyates88/suicide-rates-overview-1985-to-2016)
+I found this data set in Kaggle and given my experience with volunteering for a hotline, I was interested in how suicide rates differ across different demographics and time. I believe suicide is a complex topic that can't be understood from just a dataset, therefore, I will only be exploring how suicide rates differ between different age groups, sexes, and countries instead of looking for correlations. As well as examine how the rates have changed over the past few years for various countries. I will not be looking at the "HDI for year" column as almost 2/3 of the data is missing, and I will be exploring the GDP column as I don't aim to find correlations.  I also believe that there is an issue with the "generation" column of the data and it was appended after the data was processed using the age and year group, which creates artificial spikes, I only found this out after creating a few graphs so I removed all the graphs including this column. 
+
+```{r,,results = 'hide',,warning=FALSE, message=FALSE,echo= FALSE}
+options(warn=-1)
+library(tidyverse)           
+library(sf)                 
+library(rnaturalearth)       
+library(rnaturalearthdata)   
+library(waffle)             
+library(ggthemes)           
+library(scales)              
+d <- read.csv("master.csv")
+d <- filter(d, year != 2016)
+d$country <- recode(d$country,
+  "Republic of Korea" = "South Korea",           
+  "Russian Federation" = "Russia",              
+  "United States" = "United States of America",  
+  "Bahamas" = "The Bahamas",                    
+  "Saint Vincent and Grenadines" = "Saint Vincent and the Grenadines",
+  "Czech Republic" = "Czechia",                 
+  "Macau" = "Macao S.A.R",                      
+  "Serbia" = "Republic of Serbia"              
+)
+```
+
+# Graph 1 
+
+```{r,fig.width=12, fig.height=8,echo= FALSE}
+world_sf <- ne_countries(scale = "medium", returnclass = "sf")
+
+by_country <-  summarise(group_by(d,country),count = sum(suicides.100k.pop), .groups = "drop")
+
+mapped_data <- left_join(world_sf, by_country, by = c("admin" = "country"))
+ggplot(mapped_data) +
+  geom_sf(aes(fill = count), color = "#000c2e") +
+  scale_fill_gradient(low = "#e6e619",
+                      high = "#cc2121",
+                      name = "Total Suicides") +
+  theme_void()+
+  labs(title = "Total Suicides by Country",
+       subtitle = "Per 100k population (1985-2015)") +
+  theme(legend.key.size = unit(1, "cm"),
+        plot.subtitle = element_text(colour = "grey50", hjust = 0.5, size = 18),
+        plot.title = element_text(face = "bold", size = 26, hjust = 0.5))
+```
+
+
+### Analysis 
+
+We can see from the map that there are a lot of countries that have missing data, this could be due to lack of reporting or inaccessible data. This is especially true for Africa and Asia where the majority of countries are missing data. This makes a continent-by-continent comparison inaccurate. Furthermore, Russia has by far the highest number of suicides relative to the population, followed by East European countries. With the expectation of a few countries, the overall number of suicides is around 5k-7k for most countries. 
+```{r}
+
+```
+
+
+# Graph 2 
+
+
+```{r,echo= FALSE}
+overall_num_age <- arrange(summarise(group_by(d, age, sex), total = sum(suicides_no),.groups = "drop"),age)
+age_order <- c("5-14 years", "15-24 years", "25-34 years", "35-54 years", "55-74 years", "75+ years")
+overall_num_age$age <- factor(overall_num_age$age, levels = age_order)
+
+
+
+ggplot(overall_num_age, aes(x = age, y = total, fill = sex)) +
+  geom_bar(stat = "identity", position = "dodge",color="grey") +
+  scale_fill_manual(values = c("male" = "lightblue", "female" = "pink"),name = "Sex", labels = c("male" = "Male", "female" = "Female")
+) +
+  theme_light() +
+  labs(x = "Age Group",
+       y = "Number of Suicides",
+       title = "Total Suicides by Age Group",
+       subtitle = "1985-2015",
+       ) +
+  theme(legend.background = element_rect(fill = "white", size = 0.1, colour = "grey"),
+        legend.position = c(1, 1),
+        legend.justification = c(1, 1), 
+        plot.subtitle = element_text(colour = "grey50", hjust = 0.5),
+        plot.title = element_text(face = "bold", size = 18, hjust = 0.5))+
+  scale_y_continuous(labels = label_number(scale_cut = cut_si(unit = "")))
+ 
+```
+
+### Analysis 
+
+It is evident from the graph that the highest suicide number belongs to the "35-54 years" age group. We can see that "55-74 years" is the second highest, followed by the "25-34 years" group at the third highest. Surprisingly there are fewer suicides in the "75+ years" age group than almost any other group with the "5-15 years" group being the only group lower. A high disparity between the sexes can also be observed, with the highest disparity in the "35-54 years" group and the lowest disparity in the "75+ years" group. 
+```{r}
+
+```
+
+
+# Graph 3 
+
+
+```{r,echo= FALSE}
+global_count <- summarise(group_by(d,year),count = sum(suicides_no))
+global_count$count <- global_count$count/10000
+
+ggplot(global_count, aes(x = year, y = count)) +
+  geom_line(colour = "#2ac4c9",size=1) +
+  geom_point(aes(colour = count),size=5,shape=18) +
+  labs(title = "Global Suicides (per 100k)",
+       subtitle = "Trend over time, 1985 - 2015.",
+       x = "Year", 
+       y = "Suicides per 100k") +
+  scale_x_continuous(breaks = breaks_width(2)) +
+  scale_y_continuous(breaks = breaks_width(1)) +
+  scale_colour_gradientn(colors = c("#3240a8", "#327da8", "#1ab059", "#bdcf3a"))+
+  theme_light() +
+  theme(plot.subtitle = element_text(colour = "grey50", hjust = 0.5),
+        plot.title = element_text(face = "bold", size = 18, hjust = 0.5),
+        panel.grid.major = element_line(colour = "grey70"),   
+        panel.grid.minor = element_line(colour = "grey90"))+
+  guides(colour = FALSE)
+```
+
+### Analysis 
+
+We can see the number of suicides skyrocketed between 1988 and 1996. Afterward, the graph increased ever so slightly, reaching its peak between 1998 and 2003. After this, it decreased steadily reaching it's 20-year minimum in 2015. However, we cannot generalize this trend to the following years. Moreover, the spike in 1988 might be due to underreporting in the earlier years.
+```{r}
+
+```
+
+
+# Graph 4 
+
+
+```{r,echo= FALSE}
+age_year <- summarise(group_by(d, year, age), count = sum(suicides_no),.groups = "drop")
+age_year$count <- age_year$count / 10000
+age_year$age <- factor(age_year$age, levels = age_order)
+
+
+ggplot(age_year, aes(x = year, y = count, group = age, colour = age, shape = age)) +
+  geom_line(size = 1) +
+  geom_point(size = 3,fill="#569E05") +
+  labs(title = "Global Suicides (per 100k) by Age Group",
+       subtitle = "Trend over time, 1985 - 2015.",
+       x = "Year", 
+       y = "Suicides per 100k",
+       colour = "Age Group",
+       shape = "Age Group") +
+  scale_x_continuous(breaks = seq(1985, 2015, 2)) +
+  scale_y_continuous(breaks = breaks_width(1)) +
+  scale_colour_brewer(palette = "Dark2") +
+  scale_shape_manual(values = c(16, 17, 18, 15, 25, 19)) +
+  theme_light() +
+  theme(plot.subtitle = element_text(colour = "grey50", hjust = 0.5),
+        plot.title = element_text(face = "bold", size = 18, hjust = 0.5),
+        legend.background = element_rect(fill = "white", size = 0.1, colour = "grey50"))
+```
+
+### Analysis 
+
+The graph reveals that all the age groups have seen an increasing trend starting in 1989 and peaking at around 2003. This follows our global trend. Fortunately, There has been a steady decrease in the numbers since. Moreover, we can also observe that by far the greatest increase was in the "35-54 years" group followed by the "55-74 years" group and the "25-34 group" in that order. Interestingly there has been almost no change to the "5-14 years" age group.
+```{r}
+
+```
+
+
+# Graph 5 
+
+
+```{r,echo= FALSE}
+
+sex_totals <- summarise(group_by(d,sex),total = sum(suicides_no), .groups = "drop")
+
+sex_totals <- mutate(sex_totals,total_scaled = round(total / 100000))
+
+sex_totals <- sex_totals[order(sex_totals$total_scaled), ]
+sex_totals$sex <- factor(sex_totals$sex, levels = sex_totals$sex)
+
+ggplot(sex_totals, aes(fill = sex, values = total_scaled)) +
+  geom_waffle(n_rows = 10, size = 1, colour = "white") +
+  scale_fill_manual(
+    name = "Sex",
+    labels = c("male" = "Male", "female" = "Female"),
+    values = c("male" = "lightblue", "female" = "pink")
+  ) +
+  coord_equal() +
+  theme_void() +
+  labs(title = "Total Suicides by Sex (1985-2015)",
+       subtitle = "1 square = 100k suicides") +
+    theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+        plot.subtitle = element_text(color = "grey50", hjust = 0.5))
+
+```
+
+### Analysis 
+
+We can see that the majority of the suicides between 1985-2015 have been men at around 70%.Let's explore this proportion throughout the years and in different countries. 
+```{r}
+
+```
+
+
+# Graph 6 
+
+
+```{r,,echo= FALSE}
+grouped_data <- group_by(d, year, sex)
+summarized_data <- summarise(grouped_data, total = sum(suicides_no, na.rm = TRUE), .groups = "drop")
+sex_year <- mutate(summarized_data, total_scaled = total / 100000)
+
+ggplot(sex_year, aes(x = year, y = total_scaled, color = sex, shape = sex, group = sex)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  labs(title = "Suicides by Sex Over Time",
+       subtitle = "1985-2015 (1 unit = 100k suicides)",
+       x = "Year",
+       y = "Suicides per 100k",
+       color = "Sex",
+       shape = "Sex") +
+  scale_color_manual(values = c("male" = "lightblue", "female" = "pink"),
+                     labels = c("male" = "Male", "female" = "Female")) +
+  scale_shape_manual(values = c("male" = 19, "female" = 15),
+                     labels = c("male" = "Male", "female" = "Female")) +
+  scale_x_continuous(breaks = seq(1985, 2015, 2)) +
+  theme_light() +
+  theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+        plot.subtitle = element_text(color = "grey50", hjust = 0.5),
+        legend.background = element_rect(fill = "white", size = 0.1, colour = "grey"))
+```
+
+### Analysis 
+
+We can see that Men have always had a higher rate than women throughout the years. Also interestingly, Women's suicide numbers have remained roughly the same only fluctuating slightly, whereas men's numbers have changed drastically throughout, experiencing a spike in 1988, a peak in 2003, and a 20-year-old minimum in 2015. 
+```{r}
+
+```
+
+
+
+# Graph 7 
+
+
+```{r, fig.height=25,fig.width=15,echo= FALSE}
+by_country_gender <- summarise(group_by(d, country, sex), 
+                               total_suicides = sum(suicides_no), 
+                              .groups = "drop")
+
+country_totals <- summarise(group_by(by_country_gender, country), 
+                            overall = sum(total_suicides), 
+                            .groups = "drop")
+
+by_country_gender <- left_join(by_country_gender, country_totals, by = "country")
+
+by_country_gender$male_prop <- ifelse(by_country_gender$sex == "male",
+                                      by_country_gender$total_suicides / by_country_gender$overall,
+                                      NA_real_)
+
+male_props <- by_country_gender[by_country_gender$sex == "male" & 
+                                  !is.na(by_country_gender$male_prop), 
+                                c("country", "male_prop")]
+
+new_levels <- male_props$country[order(male_props$male_prop, decreasing = TRUE)]
+
+by_country_gender <- by_country_gender[by_country_gender$country %in% new_levels, ]
+by_country_gender$country <- factor(by_country_gender$country, levels = new_levels)
+
+ggplot(by_country_gender, aes(x = country, y = total_suicides, fill = sex)) +
+  geom_bar(stat = "identity", position = "fill", color = "white") +
+  coord_flip() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Suicides by Country and Gender",
+    subtitle = "1985-2015",
+    x = NULL, 
+    y = "Percentage of total suicides",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 26, hjust = 0.5),
+    plot.subtitle = element_text(colour = "grey50", hjust = 0.5, size = 20),
+    legend.key.size = unit(2,"cm"),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 20),
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 14),
+    axis.title.x = element_text(size = 20),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())+
+  scale_fill_discrete(labels = c("Male", "Female"))
+```
+
+### Analysis 
+Some countries had missing values for this comparison, so this might not be the most accurate comparison, however, it is very interesting to see such a high degree of discrepancy between the proportions. The Men's suicide numbers go as low as 60%-70% for some countries. Interestingly most of these countries are also from east and southeast Asia, however, not exclusively with Albania and Netherlands having the 3rd and 4th proportions for men respectively. 
+```{r}
+
+```
+
+
+# Graph 8 
+
+
+```{r,echo= FALSE}
+data_2005 <- filter(d, year == 2005)
+data_2005 <- group_by(data_2005, country)
+data_2005 <- summarise(data_2005, total_2005 = sum(suicides_no, na.rm = TRUE), .groups = "drop")
+data_2015 <- filter(d, year == 2015)
+data_2015 <- group_by(data_2015, country)
+data_2015 <- summarise(data_2015, total_2015 = sum(suicides_no, na.rm = TRUE), .groups = "drop")
+joined_data <- inner_join(data_2005, data_2015, by = "country")
+joined_data <- filter(joined_data, total_2005 != 0)
+joined_data <- mutate(joined_data, diff_scaled = (total_2015 - total_2005) / total_2005)
+ordered_data <- arrange(joined_data, desc(diff_scaled))
+top10 <- head(ordered_data, 10)
+bottom10 <- tail(ordered_data, 10)
+top20 <- bind_rows(top10, bottom10)
+
+top20 <- mutate(arrange(top20, diff_scaled), country = factor(country, levels = country))
+ggplot(top20, aes(x = country, y = diff_scaled, color = diff_scaled)) +
+  geom_segment(aes(xend = country, y = 0, yend = diff_scaled), size = 1) +
+  geom_point(size = 4) +
+  geom_hline(yintercept = 0, color = "grey50",size=1) +
+  coord_flip() +
+  scale_color_gradient(low = "green", high = "red",guide=NULL) +
+  labs(title = "Change in Suicides per Country",
+       subtitle = "Top Increases & Decreases\n 2005-2015",
+       x = "",
+       y = "Relative Change") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+        plot.subtitle = element_text(color = "grey50", hjust = 0.5),
+        axis.text.x =element_text(size=9),
+        panel.grid.major = element_line(colour = "grey70"),   
+        panel.grid.minor = element_line(colour = "grey90"))+
+        scale_y_continuous(breaks = breaks_width(0.25))
+```
+
+
+### Analysis
+
+We can also see that even though the overall trend of suicide numbers is decreasing not all countries follow this trend. We can see that the top 10 increase rates are of higher magnitude than the top 10 decrease rates. However, the worldwide decreasing trend would suggest that these countries are outliers or at least not the majority. However, exploring the reason behind these increases could be insightful. 
+
+# Summary
+In this analysis of global suicide data, we revealed that middle age people are at the highest risk, having higher numbers than younger and older demographics. Further, significant discrepancies were revealed between male and female suicide rates. And some countries, especially countries in east Europe such as Russia had higher rates, while some countries have higher increases overtime. 
