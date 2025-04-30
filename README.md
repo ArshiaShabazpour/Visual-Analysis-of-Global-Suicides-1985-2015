@@ -5,7 +5,7 @@ I found this data set in Kaggle and given my experience with volunteering for a 
 
 ## 1 
 
-![Alt text](plots/Total-Suicides-by-Country.png)<!-- -->
+![Alt text](plots/Total%20Suicides%20by%20Country.png)<!-- -->
 
 
 ### Analysis 
